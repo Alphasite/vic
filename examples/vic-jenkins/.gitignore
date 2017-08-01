@@ -1,0 +1,9 @@
+venv/
+*.log
+*.iml
+.idea/
+settings_local.py
+jenkins-vch
+jenkins-ssh-keys
+*.pyc
+**/__pycache__
