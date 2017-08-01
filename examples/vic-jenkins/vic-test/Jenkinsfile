@@ -1,0 +1,62 @@
+pipeline {
+    agent { label 'slave' }
+
+    environment {
+        ESX_URL = '10.160.235.249'
+        GOPATH = '/var/jenkins_home/gopath'
+        GOROOT = '/usr/local/go'
+        VIC_MACHINE_PATH = '${WORKSPACE}/bin/vic-machine-linux'
+    }
+
+    stages {
+        stage('Clone') {
+            steps {
+                git url: 'https://github.com/Alphasite/vic'
+                sh 'mkdir -p $GOPATH/src/github.com/vmware'
+                sh 'mount --bind . $GOPATH/src/github.com/vmware/vic'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                parallel(
+                        vicmachine: {
+                            sh 'docker -H tcp://localhost:2376 run -v $GOPATH:/go  -w /go/src/github.com/vmware/vic -e BUILD_NUMBER=10000 golang:1.8 make vic-machine'
+                        },
+                        appliance: {
+                            sh 'docker -H tcp://localhost:2376 run -v $GOPATH:/go  -w /go/src/github.com/vmware/vic -e BUILD_NUMBER=10000 golang:1.8 make appliance'
+                        },
+                        boostrap: {
+                            sh 'docker -H tcp://localhost:2376 run -v $GOPATH:/go  -w /go/src/github.com/vmware/vic -e BUILD_NUMBER=10000 golang:1.8 make bootstrap'
+                        },
+                )
+            }
+        }
+
+        stage('Unit Test') {
+            steps {
+                sh 'echo Skipping...'
+                // sh 'docker -H tcp://localhost:2376 run -v $GOPATH:/go  -w /go/src/github.com/vmware/vic -e BUILD_NUMBER=10000 golang:1.8 make test'
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sh 'pip3 install -r examples/vic-jenkins/requirements.txt'
+                sh 'cd examples/vic-jenkins; python3 run.py create vch'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh 'echo hi!'
+            }
+        }
+    }
+
+    post {
+        always {
+            sh "cd examples/vic-jenkins; python3 run.py delete vch"
+        }
+    }
+}
