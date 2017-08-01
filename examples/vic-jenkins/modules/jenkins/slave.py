@@ -125,6 +125,8 @@ def deploy_slave(settings, docker_url, cert_path) -> bool:
         remote_tag,
         name=SLAVE_IMAGE,
         network=settings.container_network,
+        mem_limit="8g",
+        cpuset_cpus="4",
         environment={
             'VCH_URL': docker_url,
             'VCH_CERT_PATH': "/var/jenkins_home/docker_certs",
@@ -139,7 +141,7 @@ def deploy_slave(settings, docker_url, cert_path) -> bool:
         volumes={
             SLAVE_VOLUME: {"bind": "/var/jenkins_home", "mode": "rw"}
         },
-        detach=True
+        detach=True,
     )
 
     print("Storing vch credentials")
@@ -226,7 +228,7 @@ def register_slave_with_master(docker_url, docker, ip, settings):
     node_dict = {
         'num_executors': 2,
         'node_description': 'ssh-node',
-        'remote_fs': '/jenkins',
+        'remote_fs': '/var/jenkins__home',
         'labels': 'slave',
         'exclusive': False,
         'host': ip,
