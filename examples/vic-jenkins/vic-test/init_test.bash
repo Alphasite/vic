@@ -28,4 +28,5 @@ docker ${DOCKER_FLAGS} run                                                      
     -e DRONE_BUILD_NUMBER=${DRONE_BUILD_NUMBER}                                       \
     -v ${GOPATH}:/go                                                                  \
     -w /go/src/github.com/vmware/vic                                                  \
-    gcr.io/eminent-nation-87317/vic-integration-test:1.33
+    gcr.io/eminent-nation-87317/vic-integration-test:1.33                             \
+    $@
