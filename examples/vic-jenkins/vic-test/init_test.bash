@@ -7,6 +7,7 @@ docker ${DOCKER_FLAGS} run                                                      
     -e GOPATH=/go                                                               \
     -e SHELL=/bin/bash                                                          \
     -e LOG_TEMP_DIR=install-logs                                                \
+    -e DRONE_BUILD_NUMBER=${DRONE_BUILD_NUMBER}                                 \
     -e TEST_URL_ARRAY="${TEST_URL_ARRAY}"                                       \
     -e TEST_USERNAME="${TEST_USERNAME}"                                         \
     -e TEST_PASSWORD="${TEST_PASSWORD}"                                         \
