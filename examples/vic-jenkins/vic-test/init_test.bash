@@ -4,7 +4,7 @@ URL_ARRAY=(${ESX_HOST_0} ${ESX_HOST_1} ${ESX_HOST_2} ${ESX_HOST_3})
 
 docker ${DOCKER_FLAGS} run                                                      \
     -e TEST_BUILD_IMAGE=""                                                      \
-    -e TEST_URL_ARRAY= ${URL_ARRAY}                                             \
+    -e TEST_URL_ARRAY= "${URL_ARRAY}"                                           \
     -e TEST_RESOURCE="/${DATACENTER_NAME}/host/${CLUSTER_NAME}"                 \
     -e TEST_TIMEOUT=60s                                                         \
     -e VIC_ESX_TEST_DATASTORE="/${DATACENTER_NAME}/datastore/${DATASTORE_NAME}" \
