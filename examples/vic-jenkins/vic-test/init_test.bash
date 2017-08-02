@@ -2,7 +2,7 @@
 
 URL_ARRAY="${ESX_HOST_0} ${ESX_HOST_1} ${ESX_HOST_2} ${ESX_HOST_3}"
 
-docker run                                                                      \
+docker ${DOCKER_FLAGS} run                                                      \
     -e BIN=bin                                                                  \
     -e GOPATH=/go                                                               \
     -e SHELL=/bin/bash                                                          \
