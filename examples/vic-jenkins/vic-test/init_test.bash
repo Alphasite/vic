@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-URL_ARRAY="${ESX_HOST_0} ${ESX_HOST_1} ${ESX_HOST_2} ${ESX_HOST_3}"
+TEST_URL_ARRAY="${ESX_HOST_0} ${ESX_HOST_1} ${ESX_HOST_2} ${ESX_HOST_3}"
 
 docker ${DOCKER_FLAGS} run                                                      \
     -e BIN=bin                                                                  \
