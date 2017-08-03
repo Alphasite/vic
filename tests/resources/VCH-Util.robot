@@ -161,6 +161,7 @@ Get Docker Params
 Install VIC Appliance To Test Server
     [Arguments]  ${vic-machine}=bin/vic-machine-linux  ${appliance-iso}=bin/appliance.iso  ${bootstrap-iso}=bin/bootstrap.iso  ${certs}=${true}  ${vol}=default  ${cleanup}=${true}  ${additional-args}=${EMPTY}
     Set Test Environment Variables
+    Log govc username: %{GOVC_USERNAME} govc password: %{GOVC_PASSWORD}
     # disable firewall
     Run Keyword If  '%{HOST_TYPE}' == 'ESXi'  Run  govc host.esxcli network firewall set -e false
     # Attempt to cleanup old/canceled tests
