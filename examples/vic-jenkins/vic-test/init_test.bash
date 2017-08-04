@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+IMAGE=${IMAGE:-gcr.io/eminent-nation-87317/vic-integration-test:1.33}
+
 TEST_URL_ARRAY="${ESX_HOST_0} ${ESX_HOST_1} ${ESX_HOST_2} ${ESX_HOST_3}"
 
 docker ${DOCKER_FLAGS} run                                                      \
@@ -22,7 +24,7 @@ docker ${DOCKER_FLAGS} run                                                      
     -v $GOPATH:/go                                                              \
     -w /go/src/github.com/vmware/vic                                            \
     --privileged                                                                \
-    gcr.io/eminent-nation-87317/vic-integration-test:1.34                       \
+    ${IMAGE}                                                                    \
     $@
 
 exit $?
