@@ -34,8 +34,11 @@ elif (echo $buildinfo | grep -q "\[specific ci="); then
 	buildtype=$(echo $buildinfo | grep "\[specific ci=")
     testsuite=$(echo $buildtype | awk -v FS="(=|])" '{print $2}')
     pybot --removekeywords TAG:secret --suite $testsuite --suite 7-01-Regression tests/test-cases
+elif if ! [ -z ${PY_BOT_ARGS+"x"} ]; then
+    echo "Running CI with provided args."
+	pybot --removekeywords TAG:secret --exclude skip ${PY_BOT_ARGS} tests/test-cases
 else
-        echo "Running regressions"
+    echo "Running regressions"
     pybot --removekeywords TAG:secret --exclude skip --include regression tests/test-cases
 fi
 

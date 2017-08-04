@@ -21,6 +21,7 @@ docker ${DOCKER_FLAGS} run                                                      
     -e GOVC_DATASTORE="${TEST_DATASTORE}"                                       \
     -e BRIDGE_NETWORK="${BRIDGE_NETWORK}"                                       \
     -e PUBLIC_NETWORK="${PUBLIC_NETWORK}"                                       \
+    -e DOMAIN="${DOMAIN}"                                                       \
     -v $GOPATH:/go                                                              \
     -w /go/src/github.com/vmware/vic                                            \
     --privileged                                                                \
