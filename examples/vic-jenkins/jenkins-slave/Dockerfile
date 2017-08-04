@@ -58,4 +58,3 @@ COPY config/authorized_keys /root/.ssh/authorized_keys
 COPY config/daemon.json /etc/docker/daemon.json
 
 VOLUME /var/jenkins_home
-VOLUME /var/lib/docker

@@ -87,7 +87,7 @@ def deploy(settings) -> bool:
         *process_args("container-network", settings.container_network),
         *process_args("management-network", settings.management_network),
         *process_args("insecure-registry", *settings.insecure_repositories),
-        *process_args("base-image-size", "20GB"),
+        *process_args("base-image-size", "50GB"),
         *process_args("debug", settings.debug),
     ]
 

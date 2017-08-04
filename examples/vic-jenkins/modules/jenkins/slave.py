@@ -15,6 +15,7 @@ from modules.jenkins import utils
 
 SLAVE_VOLUME = "jenkins-slave"
 SLAVE_IMAGE = "jenkins-slave"
+SLAVE_DOCKER_CACHE_VOLUME = "jenkins-slave-docker"
 
 
 def build_slave(settings):
@@ -99,13 +100,26 @@ def deploy_slave(settings, docker_url, cert_path) -> bool:
     volumes = docker.volumes.list(filters={"name": SLAVE_VOLUME})
 
     if len(volumes) == 0:
-        volume = docker.volumes.create(
+        docker.volumes.create(
             SLAVE_VOLUME,
             driver=vicmachine.VOLUME_DRIVER,
-            driver_opts={"VolumeStore": "nfs-store"},
+            driver_opts={
+                # "VolumeStore": "nfs-store",
+                "Capacity": "10GB",
+            },
         )
-    else:
-        volume = volumes[0]
+
+    volumes = docker.volumes.list(filters={"name": SLAVE_DOCKER_CACHE_VOLUME})
+
+    if len(volumes) == 0:
+        docker.volumes.create(
+            SLAVE_DOCKER_CACHE_VOLUME,
+            driver=vicmachine.VOLUME_DRIVER,
+            driver_opts={
+                # "VolumeStore": "nfs-store",
+                "Capacity": "11GB",
+            },
+        )
 
     print("Pulling latest base image")
 
@@ -139,7 +153,8 @@ def deploy_slave(settings, docker_url, cert_path) -> bool:
         },
         volume_driver=vicmachine.VOLUME_DRIVER,
         volumes={
-            SLAVE_VOLUME: {"bind": "/var/jenkins_home", "mode": "rw"}
+            SLAVE_VOLUME: {"bind": "/var/jenkins_home", "mode": "rw"},
+            SLAVE_DOCKER_CACHE_VOLUME: {"bind": "/var/lib/docker", "mode": "rw"},
         },
         detach=True,
     )
@@ -158,6 +173,8 @@ def deploy_slave(settings, docker_url, cert_path) -> bool:
     govc.upload(settings.gopath, env, destination, files)
 
     ip = utils.get_ip(container, docker, settings)
+
+    print("Slave started with ip", ip)
 
     try:
         register_slave_with_master(docker_url, docker, ip, settings)
@@ -228,7 +245,7 @@ def register_slave_with_master(docker_url, docker, ip, settings):
     node_dict = {
         'num_executors': 2,
         'node_description': 'ssh-node',
-        'remote_fs': '/var/jenkins__home',
+        'remote_fs': '/var/jenkins_home',
         'labels': 'slave',
         'exclusive': False,
         'host': ip,
