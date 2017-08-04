@@ -22,7 +22,7 @@ docker ${DOCKER_FLAGS} run                                                      
     -e BRIDGE_NETWORK="${BRIDGE_NETWORK}"                                       \
     -e PUBLIC_NETWORK="${PUBLIC_NETWORK}"                                       \
     -e DOMAIN="${DOMAIN}"                                                       \
-    ${PY_BOT_ARGS+"-e PY_BOT_ARGS="${PY_BOT_ARGS}""}                            \
+    -e PY_BOT_ARGS="${PY_BOT_ARGS}"                                             \
     -v $GOPATH:/go                                                              \
     -w /go/src/github.com/vmware/vic                                            \
     --privileged                                                                \
