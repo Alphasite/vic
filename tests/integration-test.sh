@@ -36,10 +36,10 @@ elif (echo $buildinfo | grep -q "\[specific ci="); then
     pybot --removekeywords TAG:secret --suite $testsuite --suite 7-01-Regression tests/test-cases
 elif ! [ -z ${PY_BOT_ARGS+"x"} ]; then
     echo "Running CI with provided args."
-	pybot --removekeywords TAG:secret --exclude skip ${PY_BOT_ARGS} tests/test-cases
+	pybot --exclude skip ${PY_BOT_ARGS} tests/test-cases
 else
     echo "Running regressions"
-    pybot --removekeywords TAG:secret --exclude skip --include regression tests/test-cases
+    pybot --exclude skip --include regression tests/test-cases
 fi
 
 rc="$?"
