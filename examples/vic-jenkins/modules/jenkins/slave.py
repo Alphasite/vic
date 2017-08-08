@@ -22,7 +22,7 @@ def build_slave(settings):
     print("Setting up connection to local docker client")
     docker = DockerClient()
 
-    print("Generting configs for image")
+    print("Generating configs for image")
     config_dir = "jenkins-slave/config"
 
     if not os.path.exists(config_dir):

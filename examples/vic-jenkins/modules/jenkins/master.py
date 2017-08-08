@@ -1,4 +1,5 @@
 import os
+from pprint import pprint
 
 from docker import DockerClient
 from jenkinsapi.credential import SSHKeyCredential
@@ -7,6 +8,8 @@ from jenkinsapi.jenkins import Jenkins
 import govc
 from modules import vicmachine
 from modules.jenkins import slave, utils
+
+JOB_NAME = "vic-engine"
 
 MASTER_VOLUME = "jenkins-master"
 MASTER_IMAGE = "jenkins-master"
@@ -131,6 +134,7 @@ def configure_master(settings, docker_url, cert_path):
         container = containers[0]
 
         print("Finding IP of container...")
+
         ip = utils.get_ip(container, docker, settings)
 
         while len(ip) == 0:
@@ -166,10 +170,136 @@ def configure_master(settings, docker_url, cert_path):
         }
 
         if utils.CREDS_DESCRIPTION in creds:
+            print("Deleting existing credentials.")
             del creds[utils.CREDS_DESCRIPTION]
+
+        print("Uploading new credentials")
 
         creds[utils.CREDS_DESCRIPTION] = SSHKeyCredential(cred_dict)
 
+        xml = config_template.format(**settings.integration_esx_settings)
+
+        if JOB_NAME in jenkins:
+            print("Updating job")
+            job = jenkins[JOB_NAME]
+            job.update_config(xml)
+        else:
+            print("Creating job")
+            job = jenkins.create_job(jobname=JOB_NAME, xml=xml)
+
+        pprint(job)
+
     else:
-        print("Failed tp find the container to configure.")
+        print("Failed to find the container to configure.")
         return
+
+
+config_template = """
+    <flow-definition plugin="workflow-job@2.12.1">
+        <actions>
+            <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction plugin="pipeline-model-definition@1.1.9">
+                <jobProperties/>
+                <triggers/>
+                <parameters/>
+            </org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction>
+        </actions>
+        <description/>
+        <keepDependencies>false</keepDependencies>
+        <properties>
+        <org.jenkinsci.plugins.workflow.job.properties.DisableConcurrentBuildsJobProperty/>
+        <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+            <triggers/>
+        </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+        </properties>
+        <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.37">
+            <script>
+pipeline {{
+    agent {{ label 'slave' }}   
+
+    environment {{
+        PY_BOT_ARGS = '--exclude bugs'
+        GOPATH = '/var/jenkins_home/gopath'
+        GOROOT = '/usr/local/go'
+        VIC_MACHINE_PATH = '${{WORKSPACE}}/bin/vic-machine-linux'
+        DOCKER_FLAGS = '-H tcp://localhost:2376'
+        DRONE_BUILD_NUMBER="0"
+        GITHUB_AUTOMATION_API_KEY = '{GITHUB_AUTOMATION_API_KEY}'
+        TEST_USERNAME = '{TEST_USERNAME}'
+        TEST_PASSWORD = '{TEST_PASSWORD}'
+        TEST_DATASTORE = "{TEST_DATASTORE}"
+        TEST_TIMEOUT = "1800s"
+        PUBLIC_NETWORK = "{PUBLIC_NETWORK}"
+        BRIDGE_NETWORK = "{BRIDGE_NETWORK}"
+        CONTAINER_NETWORK = "{CONTAINER_NETWORK}"
+        MANAGEMENT_NETWORK = "{MANAGEMENT_NETWORK}"
+        DOMAIN = "{DOMAIN}"
+        ESX_HOST_0 = "{ESX_HOST_0}"
+    }}
+
+    stages {{
+        stage('Prepare') {{
+            steps {{
+                sh 'rm -f *.zip log.html'
+            }}
+        }}
+    
+        stage('Clone') {{
+            steps {{
+                git url: 'https://github.com/Alphasite/vic'
+                sh 'mkdir -p $GOPATH/src/github.com/vmware/vic'
+                sh 'mount --bind . $GOPATH/src/github.com/vmware/vic'
+            }}
+        }}
+        
+        stage('Build') {{ 
+            steps {{
+                parallel(
+                    vicmachine: {{ 
+                        sh 'docker $DOCKER_FLAGS run -v $GOPATH:/go  -w /go/src/github.com/vmware/vic -e BUILD_NUMBER=10000 golang:1.8 make vic-machine' 
+                    }},
+                    appliance: {{ 
+                        sh 'docker $DOCKER_FLAGS run -v $GOPATH:/go  -w /go/src/github.com/vmware/vic -e BUILD_NUMBER=10000 golang:1.8 make appliance'
+                    }},
+                    boostrap: {{ 
+                        sh 'docker $DOCKER_FLAGS run -v $GOPATH:/go  -w /go/src/github.com/vmware/vic -e BUILD_NUMBER=10000 golang:1.8 make bootstrap' 
+                    }},
+                )
+            }}
+        }}
+        
+        stage('Test') {{
+            steps {{
+                parallel(
+                        Unit_Test: {{
+                            sh 'docker -H tcp://localhost:2376 run -v $GOPATH:/go  -w /go/src/github.com/vmware/vic -e BUILD_NUMBER=10000 golang:1.8 make test'
+                        }},
+                        Integration_Test: {{
+                            sh 'bash -x examples/vic-jenkins/vic-test/init_test.bash tests/integration-test.sh full ci'
+                        }},
+                )
+            }}
+        }}
+       
+        // stage('Deploy') {{ 
+        //     steps {{ 
+        //         sh 'pip3 install -r examples/vic-jenkins/requirements.txt'
+        //         sh 'cd examples/vic-jenkins; python3 run.py create vch' 
+        //     }}
+        // }}                        
+    }}
+    
+    post {{
+       success {{
+          archive "log.html"
+          archive "*-container-logs.zip.zip"
+          archive "*-certs.zip"
+       }}
+    }}
+}}
+            </script>
+            <sandbox>true</sandbox>
+        </definition>
+        <triggers/>
+        <disabled>false</disabled>
+    </flow-definition>
+"""

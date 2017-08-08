@@ -9,6 +9,7 @@ docker ${DOCKER_FLAGS} run                                                      
     -e GOPATH=/go                                                               \
     -e SHELL=/bin/bash                                                          \
     -e LOG_TEMP_DIR=install-logs                                                \
+    -e GITHUB_AUTOMATION_API_KEY="${GITHUB_AUTOMATION_API_KEY}"                 \
     -e DRONE_BUILD_NUMBER=${DRONE_BUILD_NUMBER}                                 \
     -e TEST_URL_ARRAY="${TEST_URL_ARRAY}"                                       \
     -e TEST_USERNAME="${TEST_USERNAME}"                                         \
@@ -21,6 +22,8 @@ docker ${DOCKER_FLAGS} run                                                      
     -e GOVC_DATASTORE="${TEST_DATASTORE}"                                       \
     -e BRIDGE_NETWORK="${BRIDGE_NETWORK}"                                       \
     -e PUBLIC_NETWORK="${PUBLIC_NETWORK}"                                       \
+    -e container_network="${container_network}"                                 \
+    -e MANAGEMENT_NETWORK="${MANAGEMENT_NETWORK}"                               \
     -e DOMAIN="${DOMAIN}"                                                       \
     -e PY_BOT_ARGS="${PY_BOT_ARGS}"                                             \
     -v $GOPATH:/go                                                              \
