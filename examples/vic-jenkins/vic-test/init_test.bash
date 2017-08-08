@@ -22,7 +22,7 @@ docker ${DOCKER_FLAGS} run                                                      
     -e GOVC_DATASTORE="${TEST_DATASTORE}"                                       \
     -e BRIDGE_NETWORK="${BRIDGE_NETWORK}"                                       \
     -e PUBLIC_NETWORK="${PUBLIC_NETWORK}"                                       \
-    -e container_network="${container_network}"                                 \
+    -e CONTAINER_NETWORK="${CONTAINER_NETWORK}"                                 \
     -e MANAGEMENT_NETWORK="${MANAGEMENT_NETWORK}"                               \
     -e DOMAIN="${DOMAIN}"                                                       \
     -e PY_BOT_ARGS="${PY_BOT_ARGS}"                                             \
