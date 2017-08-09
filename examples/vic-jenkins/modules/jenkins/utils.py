@@ -55,6 +55,7 @@ def setup_docker_client(docker_url, cert_path):
     docker = DockerClient(
         tls=tls_config,
         base_url=docker_url,
+        timeout=240,
     )
 
     docker.ping()
