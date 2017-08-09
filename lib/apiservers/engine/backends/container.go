@@ -129,6 +129,12 @@ var (
 	containerByPort map[string]string // port:containerID
 
 	ctx = context.TODO()
+
+	containersAcceptedFilters = map[string]bool{
+		"label":  true,
+		"label!": true,
+		"until":  true,
+	}
 )
 
 func init() {
@@ -473,7 +479,7 @@ func (c *Container) ContainerExecStart(ctx context.Context, eid string, stdin io
 		}
 
 		ac := &AttachConfig{
-			ID: eid,
+			ID:                    eid,
 			ContainerAttachConfig: ca,
 			UseTty:                ec.Tty,
 			CloseStdin:            true,
@@ -1122,12 +1128,12 @@ func interBridgeTraffic(op portmap.Operation, hostPort, proto, containerAddr, co
 		// chain rather than appended to supersede bridge-to-bridge
 		// traffic blocking
 		baseArgs := []string{"-t", string(iptables.Filter),
-			"-i", bridgeIfaceName,
-			"-o", bridgeIfaceName,
-			"-p", proto,
-			"-d", containerAddr,
-			"--dport", containerPort,
-			"-j", "ACCEPT",
+							 "-i", bridgeIfaceName,
+							 "-o", bridgeIfaceName,
+							 "-p", proto,
+							 "-d", containerAddr,
+							 "--dport", containerPort,
+							 "-j", "ACCEPT",
 		}
 
 		args := append([]string{string(iptables.Insert), "VIC", "1"}, baseArgs...)
@@ -1587,6 +1593,76 @@ payloadLoop:
 }
 
 func (c *Container) ContainersPrune(pruneFilters filters.Args) (*types.ContainersPruneReport, error) {
+	//if !atomic.CompareAndSwapInt32(&daemon.pruneRunning, 0, 1) {
+	//	return nil, errPruneRunning
+	//}
+	//defer atomic.StoreInt32(&daemon.pruneRunning, 0)
+
+	rep := &types.ContainersPruneReport{}
+
+	// make sure that only accepted filters have been received
+	err := pruneFilters.Validate(containersAcceptedFilters)
+	if err != nil {
+		return nil, err
+	}
+
+	containerListOptions := &types.ContainerListOptions{
+		All:     true,
+		Filters: pruneFilters,
+	}
+
+
+	allContainers, err := c.Containers(containerListOptions)
+	if err != nil {
+		log.Errorf("Failed to query containers.")
+		return nil, err
+	}
+
+	for _, container := range allContainers {
+		select {
+		case <-ctx.Done():
+			log.Debugf("ContainersPrune operation cancelled: %#v", *rep)
+			return rep, nil
+		default:
+		}
+
+		cache.ContainerCache().GetContainer(container.Names[0])
+
+		// Is it running?
+		state, err := c.containerProxy.State(vc)
+		if err != nil {
+			return "", InternalServerError(err.Error())
+		}
+		if state.Restarting {
+			return "", ConflictError(fmt.Sprintf("Container %s is restarting, wait until the container is running", container.ID))
+		}
+		if !state.Running {
+			return "", ConflictError(fmt.Sprintf("Container %s is not running", container.ID))
+		}
+
+		if !c.IsRunning() {
+			if !until.IsZero() && c.Created.After(until) {
+				continue
+			}
+			if !matchLabels(pruneFilters, c.Config.Labels) {
+				continue
+			}
+			cSize, _ := daemon.getSize(c.ID)
+			// TODO: sets RmLink to true?
+			err := daemon.ContainerRm(c.ID, &types.ContainerRmConfig{})
+			if err != nil {
+				logrus.Warnf("failed to prune container %s: %v", c.ID, err)
+				continue
+			}
+			if cSize > 0 {
+				rep.SpaceReclaimed += uint64(cSize)
+			}
+			rep.ContainersDeleted = append(rep.ContainersDeleted, c.ID)
+		}
+	}
+
+	return rep, nil
+
 	return nil, fmt.Errorf("%s does not yet implement ContainersPrune", ProductName())
 }
 
@@ -1652,7 +1728,7 @@ func (c *Container) containerAttach(name string, ca *backend.ContainerAttachConf
 	}
 
 	ac := &AttachConfig{
-		ID: id,
+		ID:                    id,
 		ContainerAttachConfig: ca,
 		UseTty:                vc.Config.Tty,
 		CloseStdin:            vc.Config.StdinOnce,
