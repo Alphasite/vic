@@ -4,6 +4,8 @@ import sys
 import logging
 
 import itertools
+import traceback
+
 import urllib3
 
 import modules
@@ -43,7 +45,12 @@ def parse_command(args):
             return
 
         if callable(command):
+            print()
+            print("===============================================================================================")
             print("Executing:", path)
+            print("-----------------------------------------------------------------------------------------------")
+            print()
+
             docker_url, cert_path = vicmachine.load_config(settings)
 
             function_args = {}
@@ -54,19 +61,30 @@ def parse_command(args):
             if cert_path is not None:
                 function_args["cert_path"] = cert_path
 
-            return_val = command(settings, **function_args)
+            try:
+                return_val = command(settings, **function_args)
 
-            if return_val:
+                if return_val:
+                    print()
+                    print("-----------------------------------------------------------------------------------------------")
+                    print("Successfully executed:", path)
+                    print("===============================================================================================")
+                    print()
+                else:
+                    print()
+                    print("-----------------------------------------------------------------------------------------------")
+                    print("Error executing:", path)
+                    print("===============================================================================================")
+                    print()
+                    return
+            except:
                 print()
                 print("-----------------------------------------------------------------------------------------------")
-                print("Successfully executed:", path)
-                print("-----------------------------------------------------------------------------------------------")
+                print("Encountered execution when executing:", path)
                 print()
-            else:
+                traceback.print_exc(limit=None, file=None, chain=True)
                 print()
-                print("-----------------------------------------------------------------------------------------------")
-                print("Error executing:", path)
-                print("-----------------------------------------------------------------------------------------------")
+                print("===============================================================================================")
                 print()
                 return
 
