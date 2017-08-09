@@ -2,10 +2,12 @@ import os
 import sys
 
 import logging
-import urllib3
-from modules import vicmachine
 
-from modules import jenkins
+import itertools
+import urllib3
+
+import modules
+from modules import vicmachine
 
 try:
     import settings_local as settings
@@ -19,52 +21,58 @@ urllib3.disable_warnings()
 
 
 def parse_command(args):
-    verb = args[0]
+    module = modules.MODULE
 
-    if verb == "create":
-        target = args[1]
+    for i, arg in enumerate(args[:-1]):
+        if arg in module:
+            module = module[arg]
+        else:
+            path = ".".join(args[:i+1])
+            print("Could not find module with path:", path)
+            return
 
-        if target == "vic":
-            vicmachine.deploy(settings)
+    commands = args[-1].split("+")
 
-        elif target == "jenkins":
-            target = args[2]
+    for command in commands:
+        path = ".".join(itertools.chain(args[:-1], [command]))
 
+        if command in module:
+            command = module[command]
+        else:
+            print("Could not find command with path:", path)
+            return
+
+        if callable(command):
+            print("Executing:", path)
             docker_url, cert_path = vicmachine.load_config(settings)
 
-            if docker_url is not None and cert_path is not None:
+            function_args = {}
 
-                if target == "master" or target == "all":
-                    jenkins.master.build_master(settings)
+            if docker_url is not None:
+                function_args["docker_url"] = docker_url
 
-                    if jenkins.master.deploy_master(settings, docker_url, cert_path):
-                        print("Successfully deployed jenkins master")
-                    else:
-                        print("Failed to deploy jenkins master")
+            if cert_path is not None:
+                function_args["cert_path"] = cert_path
 
-                if target == "slave" or target == "all":
-                    jenkins.slave.build_slave(settings)
-                    jenkins.slave.deploy_slave(settings, docker_url, cert_path)
+            return_val = command(settings, **function_args)
 
-    elif verb == "configure":
-        target = args[1]
+            if return_val:
+                print()
+                print("-----------------------------------------------------------------------------------------------")
+                print("Successfully executed:", path)
+                print("-----------------------------------------------------------------------------------------------")
+                print()
+            else:
+                print()
+                print("-----------------------------------------------------------------------------------------------")
+                print("Error executing:", path)
+                print("-----------------------------------------------------------------------------------------------")
+                print()
+                return
 
-        if target == "jenkins":
-            target = args[2]
-
-            if target == "master" or target == "all":
-                docker_url, cert_path = vicmachine.load_config(settings)
-
-                jenkins.master.configure_master(settings, docker_url, cert_path)
-
-            elif target == "slave" or target == "all":
-                pass
-
-    elif verb == "delete":
-        if vicmachine.delete(settings):
-            print("Successfully deleted VCH")
         else:
-            print("Failed to delete VCH")
+            print("Command not callable:", path)
+            return
 
 
 if __name__ == '__main__':

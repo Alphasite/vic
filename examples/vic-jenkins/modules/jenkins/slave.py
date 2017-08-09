@@ -18,7 +18,7 @@ SLAVE_IMAGE = "jenkins-slave"
 SLAVE_DOCKER_CACHE_VOLUME = "jenkins-slave-docker"
 
 
-def build_slave(settings):
+def build_slave(settings, **kwargs) -> bool:
     print("Setting up connection to local docker client")
     docker = DockerClient()
 
@@ -89,6 +89,8 @@ def build_slave(settings):
     )
 
     print("Successfully pushed image to repository")
+
+    return True
 
 
 def deploy_slave(settings, docker_url, cert_path) -> bool:
@@ -338,3 +340,8 @@ def register_slave_with_master(docker_url, docker, ip, settings):
         print(response.content)
     else:
         print("Failed to configure docker cloud correctly")
+
+MODULE = {
+    "build": build_slave,
+    "deploy": deploy_slave,
+}

@@ -37,7 +37,7 @@ def process_args(param_name, *args):
     return out_args
 
 
-def delete(settings) -> bool:
+def delete(settings, **kwargs) -> bool:
     args = [
         settings.vic_machine_path,
         "delete",
@@ -68,7 +68,7 @@ def delete(settings) -> bool:
         return False
 
 
-def deploy(settings) -> bool:
+def deploy(settings, **kwargs) -> bool:
     args = [
         settings.vic_machine_path,
         "create",
@@ -93,7 +93,9 @@ def deploy(settings) -> bool:
 
     result = subprocess.run(args)
 
-    if result.returncode != 0:
+    if result.returncode == 0:
+        return True
+    else:
         print("\n-------------------------------------------------------------")
         print("ERROR DEPLOYING VCH")
         print("-------------------------------------------------------------")
@@ -111,6 +113,10 @@ def deploy(settings) -> bool:
 def load_config(settings) -> Tuple[Optional[str], Optional[str]]:
     name = settings.vch_name
     vch_path = os.path.join(os.path.curdir, name, name + ".env")
+
+    if not os.path.exists(vch_path):
+        return None, None
+
     with open(vch_path, "r") as f:
         lines = f.readlines()
         lines = lines[0].split(" ")
@@ -125,3 +131,8 @@ def load_config(settings) -> Tuple[Optional[str], Optional[str]]:
     certificate_path = env["DOCKER_CERT_PATH"]
 
     return docker_url, certificate_path
+
+MODULE = {
+    "deploy": deploy,
+    "delete": delete
+}

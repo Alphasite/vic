@@ -15,7 +15,7 @@ MASTER_VOLUME = "jenkins-master"
 MASTER_IMAGE = "jenkins-master"
 
 
-def build_master(settings):
+def build_master(settings, **kwargs) -> bool:
     print("Setting up connection to local docker client")
 
     docker = DockerClient()
@@ -52,6 +52,8 @@ def build_master(settings):
     )
 
     print("Successfully pushed image to repository")
+
+    return True
 
 
 def deploy_master(settings, docker_url, cert_path) -> bool:
@@ -125,7 +127,7 @@ def deploy_master(settings, docker_url, cert_path) -> bool:
     return True
 
 
-def configure_master(settings, docker_url, cert_path):
+def configure_master(settings, docker_url, cert_path) -> bool:
     print("Setting up docker")
     docker = utils.setup_docker_client(docker_url, cert_path)
     containers = docker.containers.list(filters={"name": MASTER_IMAGE})
@@ -189,9 +191,11 @@ def configure_master(settings, docker_url, cert_path):
 
         pprint(job)
 
+        return True
+
     else:
         print("Failed to find the container to configure.")
-        return
+        return False
 
 
 config_template = """
@@ -303,3 +307,9 @@ pipeline {{
         <disabled>false</disabled>
     </flow-definition>
 """
+
+MODULE = {
+    "build": build_master,
+    "deploy": deploy_master,
+    "configure": configure_master,
+}
