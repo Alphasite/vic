@@ -22,8 +22,25 @@ except ImportError:
 urllib3.disable_warnings()
 
 
+def print_help(message, module):
+    print()
+    print(message)
+    print_module(module, 1)
+
+
+def print_module(module, depth):
+    for name, module in module.items():
+        print(" " * (depth * 2), "-", name)
+        if not callable(module):
+            print_module(module, depth + 1)
+
+
 def parse_command(args):
     module = modules.MODULE
+
+    if args[0] == "help":
+        print_help("Vic-Jenkins Deployment Tool", module)
+        return
 
     for i, arg in enumerate(args[:-1]):
         if arg in module:
@@ -31,6 +48,10 @@ def parse_command(args):
         else:
             path = ".".join(args[:i+1])
             print("Could not find module with path:", path)
+
+            message = "modules in path: {}".format(".".join(args[:i]))
+            print_help(message, module)
+
             return
 
     commands = args[-1].split("+")
@@ -42,6 +63,10 @@ def parse_command(args):
             command = module[command]
         else:
             print("Could not find command with path:", path)
+
+            path = ".".join(itertools.chain(args[:-1]))
+            message = "Options for {} are:".format(path)
+            print_help(message, module)
             return
 
         if callable(command):

@@ -47,6 +47,7 @@ def delete(settings, **kwargs) -> bool:
         *process_args("thumbprint", settings.esx_thumbprint),
         *process_args("compute-resource", settings.cluster_name),
         *process_args("name", settings.vch_name),
+        *process_args("timeout", "10m"),
     ]
 
     result = subprocess.run(args)
@@ -89,6 +90,7 @@ def deploy(settings, **kwargs) -> bool:
         *process_args("insecure-registry", *settings.insecure_repositories),
         *process_args("base-image-size", "50GB"),
         *process_args("debug", settings.debug),
+        *process_args("timeout", "10m"),
     ]
 
     result = subprocess.run(args)

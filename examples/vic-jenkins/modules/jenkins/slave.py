@@ -105,6 +105,7 @@ def deploy_slave(settings, docker_url, cert_path) -> bool:
         docker.volumes.create(
             SLAVE_VOLUME,
             driver=vicmachine.VOLUME_DRIVER,
+            network=settings.container_network,
             driver_opts={
                 # "VolumeStore": "nfs-store",
                 "Capacity": "10GB",
@@ -146,6 +147,7 @@ def deploy_slave(settings, docker_url, cert_path) -> bool:
         environment={
             'VCH_URL': docker_url,
             'VCH_CERT_PATH': "/var/jenkins_home/docker_certs",
+            'LOCAL': True,
         },
         ports={
             '22/tcp': None,

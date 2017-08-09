@@ -1,6 +1,7 @@
 import os
 from pprint import pprint
 
+import time
 from docker import DockerClient
 from jenkinsapi.credential import SSHKeyCredential
 from jenkinsapi.jenkins import Jenkins
@@ -70,12 +71,13 @@ def deploy_master(settings, docker_url, cert_path) -> bool:
     volumes = docker.volumes.list(filters={"name": MASTER_VOLUME})
 
     if len(volumes) == 0:
-        volume = docker.volumes.create(
+        docker.volumes.create(
             MASTER_VOLUME,
-            driver=vicmachine.VOLUME_DRIVER
+            driver=vicmachine.VOLUME_DRIVER,
+            driver_opts={
+                "Capacity": "10GB",
+            },
         )
-    else:
-        volume = volumes[0]
 
     print("Pulling latest base image")
 
@@ -145,7 +147,15 @@ def configure_master(settings, docker_url, cert_path) -> bool:
 
         jenkins_url = "http://{ip}:8080".format(ip=ip)
 
-        jenkins = Jenkins(jenkins_url)
+        while True:
+            try:
+                jenkins = Jenkins(jenkins_url)
+            except:
+                print("Waiting for jenkins to start...")
+                time.sleep(5)
+            else:
+                break
+
         creds = jenkins.credentials
 
         print("Storing container credentials")
@@ -179,7 +189,12 @@ def configure_master(settings, docker_url, cert_path) -> bool:
 
         creds[utils.CREDS_DESCRIPTION] = SSHKeyCredential(cred_dict)
 
-        xml = config_template.format(**settings.integration_esx_settings)
+        esx_settings = settings.integration_esx_settings
+
+        if not populate_integration_esx_settings(esx_settings):
+            return False
+
+        xml = config_template.format(**esx_settings)
 
         if JOB_NAME in jenkins:
             print("Updating job")
@@ -196,6 +211,35 @@ def configure_master(settings, docker_url, cert_path) -> bool:
     else:
         print("Failed to find the container to configure.")
         return False
+
+
+def populate_integration_esx_settings(settings):
+    required_keys = {
+        "GITHUB_AUTOMATION_API_KEY",
+        "TEST_USERNAME",
+        "TEST_PASSWORD",
+        "TEST_DATASTORE",
+        "ESX_HOST",
+    }
+
+    for required_key in required_keys:
+        if required_key not in settings:
+            print("ERROR integration_esx_settings must contain:")
+            pprint(required_keys)
+            return False
+
+    optional_keys = {
+        "PUBLIC_NETWORK",
+        "BRIDGE_NETWORK",
+        "CONTAINER_NETWORK",
+        "MANAGEMENT_NETWORK",
+        "DOMAIN",
+    }
+
+    for optional_key in optional_keys:
+        settings.setdefault(optional_key, "")
+
+    return True
 
 
 config_template = """
@@ -225,7 +269,7 @@ pipeline {{
         GOPATH = '/var/jenkins_home/gopath'
         GOROOT = '/usr/local/go'
         VIC_MACHINE_PATH = '${{WORKSPACE}}/bin/vic-machine-linux'
-        DOCKER_FLAGS = '-H tcp://localhost:2376'
+        DOCKER_FLAGS = ''
         DRONE_BUILD_NUMBER="0"
         GITHUB_AUTOMATION_API_KEY = '{GITHUB_AUTOMATION_API_KEY}'
         TEST_USERNAME = '{TEST_USERNAME}'
@@ -237,7 +281,7 @@ pipeline {{
         CONTAINER_NETWORK = "{CONTAINER_NETWORK}"
         MANAGEMENT_NETWORK = "{MANAGEMENT_NETWORK}"
         DOMAIN = "{DOMAIN}"
-        ESX_HOST_0 = "{ESX_HOST_0}"
+        ESX_HOST_0 = "{ESX_HOST}"
     }}
 
     stages {{
