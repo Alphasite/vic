@@ -319,7 +319,7 @@ pipeline {{
             steps {{
                 parallel(
                         Unit_Test: {{
-                            sh 'docker -H tcp://localhost:2376 run -v $GOPATH:/go  -w /go/src/github.com/vmware/vic -e BUILD_NUMBER=10000 golang:1.8 make test'
+                            sh 'docker $DOCKER_FLAGS run -v $GOPATH:/go  -w /go/src/github.com/vmware/vic -e BUILD_NUMBER=10000 golang:1.8 make test'
                         }},
                         Integration_Test: {{
                             sh 'bash -x examples/vic-jenkins/vic-test/init_test.bash tests/integration-test.sh full ci'
