@@ -261,7 +261,7 @@ def populate_vch_template_settings(settings):
         'ESX_HOST': settings.integration_esx_settings["ESX_HOST"],
         'USERNAME': settings.integration_esx_settings["TEST_USERNAME"],
         'PASSWORD': settings.integration_esx_settings["TEST_PASSWORD"],
-        'THUMBPRINT': settings.integration_esx_settings["TEST_USERNAME"],
+        'ESX_THUMBPRINT': settings.integration_esx_settings["ESX_THUMBPRINT"],
         'CNAME': settings.integration_esx_settings["TEST_USERNAME"],
         'TEST_DATASTORE': settings.integration_esx_settings["TEST_DATASTORE"],
         'DEBUG': settings.debug,
@@ -431,7 +431,7 @@ pipeline {{
         GOPATH = "${{WORKSPACE}}"
         GOROOT = '/usr/local/go'
         DOCKER_FLAGS = ''
-        VIC_MACHINE_PATH = "${{WORKSPACE}}/bin/vic-machine-linux"
+        VIC_MACHINE_PATH = "${{WORKSPACE}}/src/github.com/vmware/vic/bin/vic-machine-linux"
         PUBLIC_NETWORK = "{PUBLIC_NETWORK}"
         BRIDGE_NETWORK = "{BRIDGE_NETWORK}"
         CONTAINER_NETWORK = "{CONTAINER_NETWORK}"
@@ -445,7 +445,7 @@ pipeline {{
         IMAGE_STORE = '{TEST_DATASTORE}/images'        
         VOLUME_STORE = '{TEST_DATASTORE}/volumes:default'       
         INSECURE_REGISTRY = '{INSECURE_REGISTRY}'  
-        DEBUG = '${DEBUG}'              
+        DEBUG = '{DEBUG}'              
     }}
 
     stages {{
@@ -472,13 +472,13 @@ pipeline {{
             steps {{
                 parallel(
                     vicmachine: {{ 
-                        sh 'docker $DOCKER_FLAGS run -v .:/go  -w /go/src/github.com/vmware/vic -e BUILD_NUMBER=10000 golang:1.8 make vic-machine' 
+                        sh "docker run -v ${GOPATH}:/go  -w /go/src/github.com/vmware/vic -e BUILD_NUMBER=10000 golang:1.8 make vic-machine" 
                     }},
                     appliance: {{ 
-                        sh 'docker $DOCKER_FLAGS run -v .:/go  -w /go/src/github.com/vmware/vic -e BUILD_NUMBER=10000 golang:1.8 make appliance'
+                        sh "docker run -v ${GOPATH}:/go  -w /go/src/github.com/vmware/vic -e BUILD_NUMBER=10000 golang:1.8 make appliance"
                     }},
                     boostrap: {{ 
-                        sh 'docker $DOCKER_FLAGS run -v .:/go  -w /go/src/github.com/vmware/vic -e BUILD_NUMBER=10000 golang:1.8 make bootstrap' 
+                        sh "docker run -v ${GOPATH}:/go  -w /go/src/github.com/vmware/vic -e BUILD_NUMBER=10000 golang:1.8 make bootstrap" 
                     }},
                 )
             }}
