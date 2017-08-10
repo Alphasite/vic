@@ -1594,6 +1594,7 @@ payloadLoop:
 }
 
 func (c *Container) ContainersPrune(pruneFilters filters.Args) (*types.ContainersPruneReport, error) {
+	// TODO figure out what to do with this.
 	//if !atomic.CompareAndSwapInt32(&daemon.pruneRunning, 0, 1) {
 	//	return nil, errPruneRunning
 	//}
@@ -1648,7 +1649,7 @@ func (c *Container) ContainersPrune(pruneFilters filters.Args) (*types.Container
 					cache.ContainerCache().DeleteContainer(id)
 					continue
 				case *containers.ContainerRemoveDefault: // TODO figure out what this means
-					log.Warnf("failed to prune container %s: %v", vc.ContainerID, err)
+					log.Warnf("failed to prune container %s: %v", id, err)
 					return nil, InternalServerError(err.Payload.Message)
 				case *containers.ContainerRemoveConflict:
 					// This is fine, if a container ups up mid prune, then its fine to ignore.
@@ -1662,7 +1663,7 @@ func (c *Container) ContainersPrune(pruneFilters filters.Args) (*types.Container
 				rep.SpaceReclaimed += uint64(cSize)
 			}
 
-			rep.ContainersDeleted = append(rep.ContainersDeleted, vc.ContainerID)
+			rep.ContainersDeleted = append(rep.ContainersDeleted, id)
 		}
 	}
 
