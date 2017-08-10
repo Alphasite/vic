@@ -66,6 +66,7 @@ import (
 	"github.com/vmware/vic/pkg/retry"
 	"github.com/vmware/vic/pkg/trace"
 	"github.com/vmware/vic/pkg/uid"
+	"github.com/docker/docker/cli/command/prune"
 )
 
 // valid filters as of docker commit 49bf474
@@ -1611,6 +1612,7 @@ func (c *Container) ContainersPrune(pruneFilters filters.Args) (*types.Container
 		Filters: pruneFilters,
 	}
 
+	client := c.containerProxy.Client()
 
 	allContainers, err := c.Containers(containerListOptions)
 	if err != nil {
@@ -1626,44 +1628,45 @@ func (c *Container) ContainersPrune(pruneFilters filters.Args) (*types.Container
 		default:
 		}
 
-		cache.ContainerCache().GetContainer(container.Names[0])
+		id := container.ID
 
-		// Is it running?
+		vc := cache.ContainerCache().GetContainer(id)
+
 		state, err := c.containerProxy.State(vc)
 		if err != nil {
-			return "", InternalServerError(err.Error())
-		}
-		if state.Restarting {
-			return "", ConflictError(fmt.Sprintf("Container %s is restarting, wait until the container is running", container.ID))
-		}
-		if !state.Running {
-			return "", ConflictError(fmt.Sprintf("Container %s is not running", container.ID))
+			return nil, InternalServerError(err.Error())
 		}
 
-		if !c.IsRunning() {
-			if !until.IsZero() && c.Created.After(until) {
-				continue
-			}
-			if !matchLabels(pruneFilters, c.Config.Labels) {
-				continue
-			}
-			cSize, _ := daemon.getSize(c.ID)
-			// TODO: sets RmLink to true?
-			err := daemon.ContainerRm(c.ID, &types.ContainerRmConfig{})
+		if !state.Running {
+			cSize := container.SizeRw
+
+			_, err := client.Containers.ContainerRemove(containers.NewContainerRemoveParamsWithContext(ctx).WithID(id))
 			if err != nil {
-				logrus.Warnf("failed to prune container %s: %v", c.ID, err)
-				continue
+				switch err := err.(type) {
+				case *containers.ContainerRemoveNotFound:
+					// remove container from persona cache, but don't return error to the user
+					cache.ContainerCache().DeleteContainer(id)
+					continue
+				case *containers.ContainerRemoveDefault: // TODO figure out what this means
+					log.Warnf("failed to prune container %s: %v", vc.ContainerID, err)
+					return nil, InternalServerError(err.Payload.Message)
+				case *containers.ContainerRemoveConflict:
+					// This is fine, if a container ups up mid prune, then its fine to ignore.
+					continue
+				default:
+					return nil, InternalServerError(err.Error())
+				}
 			}
+
 			if cSize > 0 {
 				rep.SpaceReclaimed += uint64(cSize)
 			}
-			rep.ContainersDeleted = append(rep.ContainersDeleted, c.ID)
+
+			rep.ContainersDeleted = append(rep.ContainersDeleted, vc.ContainerID)
 		}
 	}
 
 	return rep, nil
-
-	return nil, fmt.Errorf("%s does not yet implement ContainersPrune", ProductName())
 }
 
 // docker's container.attachBackend
