@@ -10,7 +10,8 @@ import govc
 from modules import vicmachine
 from modules.jenkins import slave, utils
 
-JOB_NAME = "vic-engine"
+INTEGRATION_JOB_NAME = "vic-engine"
+VCH_JOB_NAME = "vch-test"
 
 MASTER_VOLUME = "jenkins-master"
 MASTER_IMAGE = "jenkins-master"
@@ -190,19 +191,32 @@ def configure_master(settings, docker_url, cert_path) -> bool:
         creds[utils.CREDS_DESCRIPTION] = SSHKeyCredential(cred_dict)
 
         esx_settings = settings.integration_esx_settings
+        vch_settings = populate_vch_template_settings(settings)
 
         if not populate_integration_esx_settings(esx_settings):
             return False
 
-        xml = config_template.format(**esx_settings)
+        xml = config_template_integration.format(**esx_settings)
 
-        if JOB_NAME in jenkins:
-            print("Updating job")
-            job = jenkins[JOB_NAME]
+        if INTEGRATION_JOB_NAME in jenkins:
+            print("Updating integration job")
+            job = jenkins[INTEGRATION_JOB_NAME]
             job.update_config(xml)
         else:
-            print("Creating job")
-            job = jenkins.create_job(jobname=JOB_NAME, xml=xml)
+            print("Creating integration job")
+            job = jenkins.create_job(jobname=INTEGRATION_JOB_NAME, xml=xml)
+
+        pprint(job)
+
+        xml = config_template_vch.format(**vch_settings)
+
+        if VCH_JOB_NAME in jenkins:
+            print("Updating vch job")
+            job = jenkins[VCH_JOB_NAME]
+            job.update_config(xml)
+        else:
+            print("Creating vch job")
+            job = jenkins.create_job(jobname=VCH_JOB_NAME, xml=xml)
 
         pprint(job)
 
@@ -242,7 +256,46 @@ def populate_integration_esx_settings(settings):
     return True
 
 
-config_template = """
+def populate_vch_template_settings(settings):
+    template_settings = {
+        'ESX_HOST': settings.integration_esx_settings["ESX_HOST"],
+        'USERNAME': settings.integration_esx_settings["TEST_USERNAME"],
+        'PASSWORD': settings.integration_esx_settings["TEST_PASSWORD"],
+        'THUMBPRINT': settings.integration_esx_settings["TEST_USERNAME"],
+        'CNAME': settings.integration_esx_settings["TEST_USERNAME"],
+        'TEST_DATASTORE': settings.integration_esx_settings["TEST_DATASTORE"],
+        'DEBUG': settings.debug,
+    }
+
+    if 'PUBLIC_NETWORK' in settings.integration_esx_settings:
+        template_settings['PUBLIC_NETWORK'] = settings.integration_esx_settings["PUBLIC_NETWORK"]
+    else:
+        template_settings['PUBLIC_NETWORK'] = ""
+
+    if 'BRIDGE_NETWORK' in settings.integration_esx_settings:
+        template_settings['BRIDGE_NETWORK'] = settings.integration_esx_settings["BRIDGE_NETWORK"]
+    else:
+        template_settings['BRIDGE_NETWORK'] = ""
+
+    if 'CONTAINER_NETWORK' in settings.integration_esx_settings:
+        template_settings['CONTAINER_NETWORK'] = settings.integration_esx_settings["CONTAINER_NETWORK"]
+    else:
+        template_settings['CONTAINER_NETWORK'] = ""
+
+    if 'MANAGEMENT_NETWORK' in settings.integration_esx_settings:
+        template_settings['MANAGEMENT_NETWORK'] = settings.integration_esx_settings["MANAGEMENT_NETWORK"]
+    else:
+        template_settings['MANAGEMENT_NETWORK'] = ""
+
+    if len(settings.insecure_repositories) > 0:
+        template_settings["INSECURE_REGISTRY"] = settings.insecure_repositories[0]
+    else:
+        template_settings["INSECURE_REGISTRY"] = ""
+
+    return template_settings
+
+
+config_template_integration = """
     <flow-definition plugin="workflow-job@2.12.1">
         <actions>
             <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction plugin="pipeline-model-definition@1.1.9">
@@ -342,6 +395,125 @@ pipeline {{
           archive "*-container-logs.zip.zip"
           archive "*-certs.zip"
        }}
+    }}
+}}
+            </script>
+            <sandbox>true</sandbox>
+        </definition>
+        <triggers/>
+        <disabled>false</disabled>
+    </flow-definition>
+"""
+
+config_template_vch = """
+    <flow-definition plugin="workflow-job@2.12.1">
+        <actions>
+            <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction plugin="pipeline-model-definition@1.1.9">
+                <jobProperties/>
+                <triggers/>
+                <parameters/>
+            </org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction>
+        </actions>
+        <description/>
+        <keepDependencies>false</keepDependencies>
+        <properties>
+        <org.jenkinsci.plugins.workflow.job.properties.DisableConcurrentBuildsJobProperty/>
+        <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+            <triggers/>
+        </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+        </properties>
+        <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.37">
+            <script>
+pipeline {{
+    agent {{ label 'slave' }}   
+
+    environment {{
+        GOPATH = "${{WORKSPACE}}"
+        GOROOT = '/usr/local/go'
+        DOCKER_FLAGS = ''
+        VIC_MACHINE_PATH = "${{WORKSPACE}}/bin/vic-machine-linux"
+        PUBLIC_NETWORK = "{PUBLIC_NETWORK}"
+        BRIDGE_NETWORK = "{BRIDGE_NETWORK}"
+        CONTAINER_NETWORK = "{CONTAINER_NETWORK}"
+        MANAGEMENT_NETWORK = "{MANAGEMENT_NETWORK}"
+        ESX_URL = "{ESX_HOST}"            
+        ESX_USERNAME = '{USERNAME}'      
+        ESX_PASSWORD = '{PASSWORD}'      
+        ESX_THUMBPRINT = '{THUMBPRINT}'     
+        ESX_TLS_CNAME = '{CNAME}'      
+        VCH_NAME = "test-vch-${{BUILD_TAG}}"
+        IMAGE_STORE = '{TEST_DATASTORE}/images'        
+        VOLUME_STORE = '{TEST_DATASTORE}/volumes:default'       
+        INSECURE_REGISTRY = '{INSECURE_REGISTRY}'  
+        DEBUG = '${DEBUG}'              
+    }}
+
+    stages {{
+        stage('Prepare') {{
+            steps {{
+                sh 'rm -f *.zip log.html'
+                sh 'pip3 install virtualenv'
+                sh '[ -d ${{WORKSPACE}}/venv/ ] || virtualenv -p $(which python3) ${{WORKSPACE}}/venv'
+                sh '/bin/bash -c "source ${{WORKSPACE}}/venv/bin/activate; pip3 install jenkinsapi docker requests"'            
+            }}
+        }}
+    
+        stage('Clone') {{
+            steps {{
+                sh "mkdir -p ${{WORKSPACE}}/src/github.com/vmware/vic"
+
+                dir("${{WORKSPACE}}/src/github.com/vmware/vic") {{
+                    git url: 'https://github.com/Alphasite/vic'
+                }}
+            }}
+        }}
+        
+        stage('Build') {{ 
+            steps {{
+                parallel(
+                    vicmachine: {{ 
+                        sh 'docker $DOCKER_FLAGS run -v .:/go  -w /go/src/github.com/vmware/vic -e BUILD_NUMBER=10000 golang:1.8 make vic-machine' 
+                    }},
+                    appliance: {{ 
+                        sh 'docker $DOCKER_FLAGS run -v .:/go  -w /go/src/github.com/vmware/vic -e BUILD_NUMBER=10000 golang:1.8 make appliance'
+                    }},
+                    boostrap: {{ 
+                        sh 'docker $DOCKER_FLAGS run -v .:/go  -w /go/src/github.com/vmware/vic -e BUILD_NUMBER=10000 golang:1.8 make bootstrap' 
+                    }},
+                )
+            }}
+        }}
+        
+        stage('Test') {{
+            steps {{
+                parallel(
+                        Unit_Test: {{
+                            sh 'docker $DOCKER_FLAGS run -v $GOPATH:/go  -w /go/src/github.com/vmware/vic -e BUILD_NUMBER=10000 golang:1.8 make test'
+                        }},
+                        Integration_Test: {{
+                            sh 'bash -x examples/vic-jenkins/vic-test/init_test.bash tests/integration-test.sh full ci'
+                        }},
+                )
+            }}
+        }}
+       
+        stage('Deploy') {{ 
+            steps {{ 
+                sh 'cd /src/github.com/vmware/vic/examples/vic-jenkins; python3 run.py vch create' 
+            }}
+        }}                        
+    }}
+    
+    post {{
+        always {{
+            sh 'cd /src/github.com/vmware/vic/examples/vic-jenkins; python3 run.py vch delete'
+        }}
+        
+        //success {{
+        //   archive "log.html"
+        //   archive "*-container-logs.zip.zip"
+        //   archive "*-certs.zip"
+        //}}
     }}
 }}
             </script>
