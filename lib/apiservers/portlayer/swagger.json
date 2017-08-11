@@ -1481,46 +1481,6 @@
 				}
 			}
 		},
-		"/containers/prune": {
-			"get": {
-				"description": "Prune containers",
-				"operationId": "PruneContainers",
-				"tags": [
-					"containers"
-				],
-				"consumes": [
-					"application/octet-stream"
-				],
-				"produces": [
-					"application/json"
-				],
-				"parameters": [
-					{
-						"name": "filterString",
-						"type": "string",
-						"in": "query",
-						"required": false
-					}
-				],
-				"responses": {
-					"200": {
-						"description": "OK",
-						"schema": {
-							"type": "array",
-							"items": {
-								"$ref": "#/definitions/ContainerPruneResponse"
-							}
-						}
-					},
-					"500": {
-						"description": "server error",
-						"schema": {
-							"$ref": "#/definitions/Error"
-						}
-					}
-				}
-			}
-		},
 		"/containers/{id}": {
 			"get": {
 				"description": "Get a container handle",
@@ -3169,25 +3129,6 @@
 						"RUNNING",
 						"STOPPED"
 					]
-				}
-			}
-		},
-		"ContainerPruneResponse": {
-			"type": "object",
-			"required": [
-				"ContainersDeleted",
-				"SpaceReclaimed"
-			],
-			"properties": {
-				"ContainersDeleted": {
-					"type": "array",
-					"items": {
-						"type": "string"
-					}
-				},
-				"SpaceReclaimed": {
-					"type": "integer",
-					"x-nullable": false
 				}
 			}
 		},
