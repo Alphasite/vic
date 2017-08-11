@@ -262,7 +262,7 @@ def populate_vch_template_settings(settings):
         'USERNAME': settings.integration_esx_settings["TEST_USERNAME"],
         'PASSWORD': settings.integration_esx_settings["TEST_PASSWORD"],
         'ESX_THUMBPRINT': settings.integration_esx_settings["ESX_THUMBPRINT"],
-        'CNAME': settings.integration_esx_settings["TEST_USERNAME"],
+        'CNAME': settings.integration_esx_settings["ESX_TLS_CNAME"],
         'TEST_DATASTORE': settings.integration_esx_settings["TEST_DATASTORE"],
         'DEBUG': settings.debug,
     }
@@ -439,7 +439,7 @@ pipeline {{
         ESX_URL = "{ESX_HOST}"            
         ESX_USERNAME = '{USERNAME}'      
         ESX_PASSWORD = '{PASSWORD}'      
-        ESX_THUMBPRINT = '{THUMBPRINT}'     
+        ESX_THUMBPRINT = '{ESX_THUMBPRINT}'     
         ESX_TLS_CNAME = '{CNAME}'      
         VCH_NAME = "test-vch-${{BUILD_TAG}}"
         IMAGE_STORE = '{TEST_DATASTORE}/images'        
@@ -454,7 +454,7 @@ pipeline {{
                 sh 'rm -f *.zip log.html'
                 sh 'pip3 install virtualenv'
                 sh '[ -d ${{WORKSPACE}}/venv/ ] || virtualenv -p $(which python3) ${{WORKSPACE}}/venv'
-                sh '/bin/bash -c "source ${{WORKSPACE}}/venv/bin/activate; pip3 install jenkinsapi docker requests"'            
+                sh "/bin/bash -c 'source ${{WORKSPACE}}/venv/bin/activate; pip3 install jenkinsapi docker requests'"            
             }}
         }}
     
@@ -472,41 +472,28 @@ pipeline {{
             steps {{
                 parallel(
                     vicmachine: {{ 
-                        sh "docker run -v ${GOPATH}:/go  -w /go/src/github.com/vmware/vic -e BUILD_NUMBER=10000 golang:1.8 make vic-machine" 
+                        sh "docker run -v ${{GOPATH}}:/go  -w /go/src/github.com/vmware/vic -e BUILD_NUMBER=10000 golang:1.8 make vic-machine" 
                     }},
                     appliance: {{ 
-                        sh "docker run -v ${GOPATH}:/go  -w /go/src/github.com/vmware/vic -e BUILD_NUMBER=10000 golang:1.8 make appliance"
+                        sh "docker run -v ${{GOPATH}}:/go  -w /go/src/github.com/vmware/vic -e BUILD_NUMBER=10000 golang:1.8 make appliance"
                     }},
                     boostrap: {{ 
-                        sh "docker run -v ${GOPATH}:/go  -w /go/src/github.com/vmware/vic -e BUILD_NUMBER=10000 golang:1.8 make bootstrap" 
+                        sh "docker run -v ${{GOPATH}}:/go  -w /go/src/github.com/vmware/vic -e BUILD_NUMBER=10000 golang:1.8 make bootstrap" 
                     }},
-                )
-            }}
-        }}
-        
-        stage('Test') {{
-            steps {{
-                parallel(
-                        Unit_Test: {{
-                            sh 'docker $DOCKER_FLAGS run -v $GOPATH:/go  -w /go/src/github.com/vmware/vic -e BUILD_NUMBER=10000 golang:1.8 make test'
-                        }},
-                        Integration_Test: {{
-                            sh 'bash -x examples/vic-jenkins/vic-test/init_test.bash tests/integration-test.sh full ci'
-                        }},
                 )
             }}
         }}
        
         stage('Deploy') {{ 
             steps {{ 
-                sh 'cd /src/github.com/vmware/vic/examples/vic-jenkins; python3 run.py vch create' 
+                sh 'cd ./src/github.com/vmware/vic/examples/vic-jenkins; python3 run.py vic deploy' 
             }}
         }}                        
     }}
     
     post {{
         always {{
-            sh 'cd /src/github.com/vmware/vic/examples/vic-jenkins; python3 run.py vch delete'
+            sh 'cd ./src/github.com/vmware/vic/examples/vic-jenkins; python3 run.py vic delete'
         }}
         
         //success {{
