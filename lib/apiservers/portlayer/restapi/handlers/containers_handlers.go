@@ -69,6 +69,7 @@ func (handler *ContainersHandlersImpl) Configure(api *operations.PortLayerAPI, h
 	api.ContainersContainerWaitHandler = containers.ContainerWaitHandlerFunc(handler.ContainerWaitHandler)
 	api.ContainersContainerRenameHandler = containers.ContainerRenameHandlerFunc(handler.RenameContainerHandler)
 	api.ContainersGetContainerStatsHandler = containers.GetContainerStatsHandlerFunc(handler.GetContainerStatsHandler)
+	api.ContainersPruneContainersHandler = containers.PruneContainersHandlerFunc(handler.PruneContainersHandler)
 
 	handler.handlerCtx = handlerCtx
 }
@@ -496,6 +497,10 @@ func (handler *ContainersHandlersImpl) RenameContainerHandler(params containers.
 	h = h.Rename(params.Name)
 
 	return containers.NewContainerRenameOK().WithPayload(h.String())
+}
+
+func (handler *ContainersHandlersImpl) PruneContainersHandler(params containers.PruneContainersParams) middleware.Responder {
+	return nil
 }
 
 // utility function to convert from a Container type to the API Model ContainerInfo (which should prob be called ContainerDetail)

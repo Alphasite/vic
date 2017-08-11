@@ -265,6 +265,7 @@ def populate_vch_template_settings(settings):
         'CNAME': settings.integration_esx_settings["ESX_TLS_CNAME"],
         'TEST_DATASTORE': settings.integration_esx_settings["TEST_DATASTORE"],
         'DEBUG': settings.debug,
+        'VCH_TEST_IMAGE': settings.integration_esx_settings["VCH_TEST_IMAGE"]
     }
 
     if 'PUBLIC_NETWORK' in settings.integration_esx_settings:
@@ -445,7 +446,9 @@ pipeline {{
         IMAGE_STORE = '{TEST_DATASTORE}/images'        
         VOLUME_STORE = '{TEST_DATASTORE}/volumes:default'       
         INSECURE_REGISTRY = '{INSECURE_REGISTRY}'  
-        DEBUG = '{DEBUG}'              
+        DEBUG = '{DEBUG}'            
+        TEST_IMAGE = '{VCH_TEST_IMAGE}'
+        TEST_IMAGE_PARAMETERS = ' '  
     }}
 
     stages {{
@@ -488,7 +491,13 @@ pipeline {{
             steps {{ 
                 sh 'cd ./src/github.com/vmware/vic/examples/vic-jenkins; python3 run.py vic deploy' 
             }}
-        }}                        
+        }}    
+                            
+        stage('Test') {{
+            steps {{
+                sh "docker run -v ${{WORKSPACE}}/src/github.com/vmware/vic/examples/vic-jenkins/${{VCH_NAME}}/:/vch-creds ${{TEST_IMAGE}} ${{TEST_IMAGE_PARAMETERS}}"
+            }}
+        }}
     }}
     
     post {{
