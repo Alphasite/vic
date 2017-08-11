@@ -1,0 +1,51 @@
+version: "2.1"
+services:
+  master:
+    container_name: jenkins-master
+    build: ./jenkins-master
+    image: vm-harbour.nishadmathur.com/jenkins/jenkins-master:latest
+    command: --argumentsRealm.passwd.test=test --argumentsRealm.roles.test=admin
+    volumes:
+      - jenkins-master:/var/jenkins_home
+    networks:
+      - external
+    ports:
+      - "8080"
+      - "50000"
+    environment:
+      JAVA_OPTS: "-Djenkins.install.runSetupWizard=false"
+    labels:
+      app: master
+  slave:
+    container_name: jenkins-slave
+    build: ./jenkins-slave
+    image: vm-harbour.nishadmathur.com/jenkins/jenkins-slave:latest
+    volumes:
+      - jenkins-slave:/var/jenkins_home
+    networks:
+      - external
+    ports:
+      - "22"
+      - "2376"
+    depends_on:
+      - master
+    environment:
+      LOCAL: "True"
+    labels:
+      app: slave
+    cpuset: "6"
+    mem_limit: "8g"
+
+volumes:
+  jenkins-master:
+    driver: vsphere
+    driver_opts:
+      Capacity: 10GB
+  jenkins-slave:
+    driver: vsphere
+    driver_opts:
+      Capacity: 10GB
+
+networks:
+  external:
+    external: true

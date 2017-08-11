@@ -18,10 +18,7 @@ SLAVE_IMAGE = "jenkins-slave"
 SLAVE_DOCKER_CACHE_VOLUME = "jenkins-slave-docker"
 
 
-def build_slave(settings, **kwargs) -> bool:
-    print("Setting up connection to local docker client")
-    docker = DockerClient()
-
+def prepare_build_env(settings, **kwargs) -> bool:
     print("Generating configs for image")
     config_dir = "jenkins-slave/config"
 
@@ -57,6 +54,13 @@ def build_slave(settings, **kwargs) -> bool:
 
     with open(daemon_config_file, "w") as f:
         json.dump(daemon_config, f)
+
+    return True
+
+
+def build_slave(settings, **kwargs) -> bool:
+    print("Setting up connection to local docker client")
+    docker = DockerClient()
 
     print("Building image...")
 
@@ -193,6 +197,49 @@ def deploy_slave(settings, docker_url, cert_path) -> bool:
         utils.find_and_kill_running_instances(docker, SLAVE_IMAGE)
 
     return True
+
+
+def configure_slave(settings, docker_url, cert_path, **kwargs) -> bool:
+    print("Setting up docker")
+    docker = utils.setup_docker_client(docker_url, cert_path)
+    containers = docker.containers.list(filters={"name": SLAVE_IMAGE})
+
+    if len(containers) > 0:
+        container = containers[0]
+
+        print("Storing vch credentials")
+        env = govc.build_env(settings)
+        env = utils.populate_env(env, container)
+        env["GOVC_GUEST_LOGIN"] = container.id
+        env["GOVC_VM"] = container.name + "-" + container.id[:12]
+
+        files = os.listdir(cert_path)
+        files = [os.path.join(cert_path, file) for file in files]
+
+        destination = "/var/jenkins_home/docker_certs"
+        govc.run(settings.gopath, env, ["guest.mkdir", destination])
+        govc.upload(settings.gopath, env, destination, files)
+
+        ip = utils.get_ip(container, docker, settings)
+
+        print("Slave started with ip", ip)
+
+        try:
+            register_slave_with_master(docker_url, docker, ip, settings)
+        except:
+            print("Error configuring slave")
+            print()
+            traceback.print_exc()
+            print()
+            print("Cleaning up slave")
+            print()
+
+            utils.find_and_kill_running_instances(docker, SLAVE_IMAGE)
+
+        return True
+    else:
+        print("Failed to find the container to configure.")
+        return False
 
 
 def register_slave_with_master(docker_url, docker, ip, settings):
@@ -344,6 +391,8 @@ def register_slave_with_master(docker_url, docker, ip, settings):
         print("Failed to configure docker cloud correctly")
 
 MODULE = {
+    "prepare": prepare_build_env,
     "build": build_slave,
     "deploy": deploy_slave,
+    "configure": configure_slave,
 }
