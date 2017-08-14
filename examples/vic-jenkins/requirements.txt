@@ -1,3 +1,5 @@
 jenkinsapi
 docker
 requests
+paramiko
+scp

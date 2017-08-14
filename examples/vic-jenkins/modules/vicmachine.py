@@ -2,6 +2,7 @@ import subprocess
 from typing import Optional, Tuple
 
 import os
+import modules.scp
 
 # ${VIC_BIN_PATH}/vic-machine-darwin create \
 #     -t ${SERVER_PATH} \
@@ -113,6 +114,51 @@ def deploy(settings, **kwargs) -> bool:
         return False
 
 
+def enable_ssh(settings, **kwargs) -> bool:
+    args = [
+        settings.vic_machine_path,
+        "debug",
+        *process_args("t", settings.esx_url),
+        *process_args("u", settings.esx_username),
+        *process_args("p", settings.esx_password),
+        *process_args("thumbprint", settings.esx_thumbprint),
+        *process_args("compute-resource", settings.cluster_name),
+        *process_args("name", settings.vch_name),
+        "--enable-ssh",
+        *process_args("rootpw", "password"),
+    ]
+
+    result = subprocess.run(args)
+
+    if result.returncode == 0:
+        return True
+    else:
+        print("\n-------------------------------------------------------------")
+        print("ERROR ENABLING VCH")
+        print("-------------------------------------------------------------")
+        print("STDOOUT")
+        print("-------------------------------------------------------------\n")
+        print(result.stdout)
+        print("\n-------------------------------------------------------------")
+        print("STDERR")
+        print("-------------------------------------------------------------\n")
+        print(result.stderr)
+        print("")
+        return False
+
+
+def fetch_logs(settings, docker_url: str, **kwargs) -> bool:
+    vch_hostname = docker_url.split(":")[0]
+    source = "/var/log/vic/*"
+    destination = "vch_logs"
+    username = "root"
+    password = "password"
+
+    modules.scp.get_files(vch_hostname, source, destination, username, password)
+
+    return True
+
+
 def load_config(settings) -> Tuple[Optional[str], Optional[str]]:
     name = settings.vch_name
     vch_path = os.path.join(os.path.curdir, name, name + ".env")
@@ -137,5 +183,7 @@ def load_config(settings) -> Tuple[Optional[str], Optional[str]]:
 
 MODULE = {
     "deploy": deploy,
-    "delete": delete
+    "delete": delete,
+    "enable_ssh": enable_ssh,
+    "fetch_logs": fetch_logs,
 }

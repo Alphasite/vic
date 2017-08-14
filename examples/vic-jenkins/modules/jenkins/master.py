@@ -457,7 +457,7 @@ pipeline {{
                 sh 'rm -f *.zip log.html'
                 sh 'pip3 install virtualenv'
                 sh '[ -d ${{WORKSPACE}}/venv/ ] || virtualenv -p $(which python3) ${{WORKSPACE}}/venv'
-                sh "/bin/bash -c 'source ${{WORKSPACE}}/venv/bin/activate; pip3 install jenkinsapi docker requests'"            
+                sh "/bin/bash -c 'source ${{WORKSPACE}}/venv/bin/activate; pip3 install jenkinsapi docker requests paramiko scp'"
             }}
         }}
     
@@ -502,7 +502,9 @@ pipeline {{
     
     post {{
         always {{
+            sh 'cd ./src/github.com/vmware/vic/examples/vic-jenkins; python3 run.py vic fetch_logs'
             sh 'cd ./src/github.com/vmware/vic/examples/vic-jenkins; python3 run.py vic delete'
+            archive "vch_logs"
         }}
         
         //success {{
