@@ -35,29 +35,32 @@ def print_module(module, depth):
             print_module(module, depth + 1)
 
 
-def parse_command(args):
-    module = modules.MODULE
+def parse_command(args, module):
 
-    if args[0] == "help":
+    if len(args) == 0 or args[0] == "help":
         print_help("Vic-Jenkins Deployment Tool", module)
         return
 
-    for i, arg in enumerate(args[:-1]):
+    command_path = args[0].split('.')
+    arguments = args[1:]
+
+    for i, arg in enumerate(command_path[:-1]):
         if arg in module:
             module = module[arg]
         else:
-            path = ".".join(args[:i+1])
+            path = ".".join(command_path[:i+1])
             print("Could not find module with path:", path)
 
-            message = "modules in path: {}".format(".".join(args[:i]))
+            path = ".".join(command_path[:i])
+            message = "modules in path: {}".format(path)
             print_help(message, module)
 
             return
 
-    commands = args[-1].split("+")
+    commands = command_path[-1].split("+")
 
     for command in commands:
-        path = ".".join(itertools.chain(args[:-1], [command]))
+        path = ".".join(itertools.chain(command_path[:-1], [command]))
 
         if command in module:
             command = module[command]
@@ -85,6 +88,8 @@ def parse_command(args):
 
             if cert_path is not None:
                 function_args["cert_path"] = cert_path
+
+            function_args["arguments"] = arguments
 
             try:
                 return_val = command(settings, **function_args)
@@ -127,6 +132,6 @@ if __name__ == '__main__':
     if verb == "repl":
         while True:
             command = input("> ")
-            parse_command(command.split())
+            parse_command(command.split(), modules.MODULE)
     else:
-        parse_command(sys.argv[1:])
+        parse_command(sys.argv[1:], modules.MODULE)

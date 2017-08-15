@@ -7,6 +7,7 @@ from jenkinsapi.credential import SSHKeyCredential
 from jenkinsapi.jenkins import Jenkins
 
 import govc
+import utils
 from modules import vicmachine
 from modules.jenkins import slave, utils
 

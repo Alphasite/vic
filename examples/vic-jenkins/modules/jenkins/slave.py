@@ -10,6 +10,7 @@ import urllib3
 from docker import DockerClient
 
 import govc
+import utils
 from modules import vicmachine
 from modules.jenkins import utils
 

@@ -181,9 +181,42 @@ def load_config(settings) -> Tuple[Optional[str], Optional[str]]:
 
     return docker_url, certificate_path
 
+
+def configure_firewall(settings, **kwargs) -> bool:
+    args = [
+        settings.vic_machine_path,
+        "update",
+        "firewall",
+        "--allow",
+        *process_args("t", settings.esx_url),
+        *process_args("u", settings.esx_username),
+        *process_args("p", settings.esx_password),
+        *process_args("thumbprint", settings.esx_thumbprint),
+    ]
+
+    result = subprocess.run(args)
+
+    if result.returncode == 0:
+        return True
+    else:
+        print("\n-------------------------------------------------------------")
+        print("ERROR OPENING FIREWALL ")
+        print("-------------------------------------------------------------")
+        print("STDOOUT")
+        print("-------------------------------------------------------------\n")
+        print(result.stdout)
+        print("\n-------------------------------------------------------------")
+        print("STDERR")
+        print("-------------------------------------------------------------\n")
+        print(result.stderr)
+        print("")
+        return False
+
+
 MODULE = {
     "deploy": deploy,
     "delete": delete,
     "enable_ssh": enable_ssh,
     "fetch_logs": fetch_logs,
+    "configure_firewall": configure_firewall,
 }
