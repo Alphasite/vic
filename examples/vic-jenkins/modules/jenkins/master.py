@@ -505,7 +505,7 @@ pipeline {{
         always {{
             sh "cd ./src/github.com/vmware/vic/examples/vic-jenkins; /bin/bash -c 'source ${{WORKSPACE}}/venv/bin/activate; python3 run.py vic fetch_logs'"
             sh "cd ./src/github.com/vmware/vic/examples/vic-jenkins; /bin/bash -c 'source ${{WORKSPACE}}/venv/bin/activate; python3 run.py vic delete'"
-            archiveArtifacts allowEmptyArchive: true, artifacts: '${WORKSPACE}/src/github.com/vmware/vic/examples/vic-jenkin/vch_logs/*'
+            archiveArtifacts allowEmptyArchive: true, artifacts: '**/vch_logs/*'
         }}
         
         //success {{
