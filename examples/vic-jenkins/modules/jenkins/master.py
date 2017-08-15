@@ -490,6 +490,7 @@ pipeline {{
         stage('Deploy') {{ 
             steps {{ 
                 sh "cd ./src/github.com/vmware/vic/examples/vic-jenkins; /bin/bash -c 'source ${WORKSPACE}/venv/bin/activate; python3 run.py vic deploy'" 
+                sh "cd ./src/github.com/vmware/vic/examples/vic-jenkins; /bin/bash -c 'source ${WORKSPACE}/venv/bin/activate; python3 run.py vic enable_ssh'" 
             }}
         }}    
                             
@@ -504,7 +505,7 @@ pipeline {{
         always {{
             sh "cd ./src/github.com/vmware/vic/examples/vic-jenkins; /bin/bash -c 'source ${{WORKSPACE}}/venv/bin/activate; python3 run.py vic fetch_logs'"
             sh "cd ./src/github.com/vmware/vic/examples/vic-jenkins; /bin/bash -c 'source ${{WORKSPACE}}/venv/bin/activate; python3 run.py vic delete'"
-            archive "vch_logs"
+            archiveArtifacts allowEmptyArchive: true, artifacts: '${WORKSPACE}/src/github.com/vmware/vic/examples/vic-jenkin/vch_logs/*'
         }}
         
         //success {{
