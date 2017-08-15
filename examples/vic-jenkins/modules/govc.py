@@ -70,6 +70,6 @@ def upload_wrapper(settings, arguments, docker_url, cert_path, **kwargs) -> bool
 
 
 MODULE = {
-    "run": run_wrapper,
+    "": run_wrapper,
     "upload": upload_wrapper,
 }

@@ -72,6 +72,10 @@ def parse_command(args, module):
             print_help(message, module)
             return
 
+        # Zero length strings alias to the modules self.
+        if not callable(command) and "" in command:
+            command = command[""]
+
         if callable(command):
             print()
             print("===============================================================================================")
@@ -128,6 +132,8 @@ if __name__ == '__main__':
 
     if "VERBOSE" in os.environ and os.environ["VERBOSE"].lower() == "true":
         logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
 
     if verb == "repl":
         while True:

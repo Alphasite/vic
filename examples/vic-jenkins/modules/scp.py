@@ -36,3 +36,7 @@ def get_files(hostname, source, destination, username, password):
         os.makedirs(destination)
 
     scp.get(source, destination, recursive=True)
+
+MODULE = {
+    "": get_files_wrapper,
+}

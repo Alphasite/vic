@@ -6,7 +6,7 @@ import logging
 
 import utils
 from modules import jenkins, vicmachine
-from modules.govc import build_env, upload
+from modules.govc import build_env, upload, run
 
 if __name__ == "__main__":
     try:
